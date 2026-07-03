@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cold Chain Brain</title>
+<style>
+  :root {
+    --page: #f9f9f7;
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --series-1-track: #e1e0d9;
+    --status-good: #0ca30c;
+    --status-good-bg: rgba(12,163,12,0.10);
+    --status-critical: #d03b3b;
+    --status-critical-bg: rgba(208,59,59,0.10);
+    --status-muted-bg: rgba(137,135,129,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0d0d0d;
+      --surface-1: #1a1a19;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-1-track: #2c2c2a;
+      --status-good: #0ca30c;
+      --status-good-bg: rgba(12,163,12,0.16);
+      --status-critical: #e66767;
+      --status-critical-bg: rgba(230,103,103,0.16);
+      --status-muted-bg: rgba(137,135,129,0.16);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 1.5rem 1rem 3rem;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 1.5rem; }
+  .verdict {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-size: 1.6rem; font-weight: 700; padding: .4rem 1.2rem; border-radius: 999px;
+  }
+  .verdict.good { color: var(--status-good); background: var(--status-good-bg); }
+  .verdict.critical { color: var(--status-critical); background: var(--status-critical-bg); }
+  .verdict.na { color: var(--text-muted); background: var(--status-muted-bg); }
+  .subtext { color: var(--text-muted); font-size: .8rem; margin-top: .5rem; }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem 1.1rem;
+  }
+
+  section { margin-bottom: 1.75rem; }
+  section > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 600; margin: 0 0 .6rem; }
+
+  /* sensor stat tiles */
+  .sensor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; }
+  .sensor-tile .label { font-size: .75rem; color: var(--text-muted); margin-bottom: .3rem; }
+  .sensor-tile .value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sensor-tile .unit { font-size: .85rem; color: var(--text-secondary); font-weight: 400; }
+  .sparkline { width: 100%; height: 28px; display: block; margin-top: .4rem; }
+  .sparkline polyline { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* model cards */
+  .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .9rem; }
+  .model-card h3 { font-size: .95rem; margin: 0 0 .15rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .model-card .model-type { font-size: .72rem; color: var(--text-muted); margin-bottom: .7rem; }
+  .badge { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; white-space: nowrap; }
+  .badge.good { color: var(--status-good); background: var(--status-good-bg); }
+  .badge.critical { color: var(--status-critical); background: var(--status-critical-bg); }
+  .badge.na { color: var(--text-muted); background: var(--status-muted-bg); }
+  .meter-row { display: flex; align-items: center; gap: .6rem; margin: .3rem 0; }
+  .meter-row .meter-label { font-size: .78rem; color: var(--text-secondary); width: 6.2rem; flex-shrink: 0; }
+  .meter { flex: 1; height: 8px; border-radius: 4px; background: var(--series-1-track); overflow: hidden; }
+  .meter > div { height: 100%; background: var(--series-1); border-radius: 4px; transition: width .4s ease; }
+  .meter-row .meter-value { font-size: .8rem; font-variant-numeric: tabular-nums; width: 3rem; text-align: right; flex-shrink: 0; }
+  .model-footnote { font-size: .7rem; color: var(--text-muted); margin-top: .7rem; line-height: 1.4; }
+  .model-footnote a { color: var(--text-muted); }
+  .caveat { font-size: .7rem; color: var(--status-critical); margin-top: .4rem; line-height: 1.4; }
+
+  /* flow diagram */
+  .flow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .5rem; padding: 1rem 0; }
+  .flow-node {
+    background: var(--surface-1); border: 2px solid var(--border); border-radius: 10px;
+    padding: .5rem .8rem; font-size: .78rem; text-align: center; min-width: 84px;
+    transition: border-color .3s, background .3s;
+  }
+  .flow-node .flow-title { font-weight: 600; display: block; }
+  .flow-node .flow-sub { display: block; font-size: .68rem; color: var(--text-muted); margin-top: .15rem; }
+  .flow-node.good { border-color: var(--status-good); background: var(--status-good-bg); }
+  .flow-node.critical { border-color: var(--status-critical); background: var(--status-critical-bg); }
+  .flow-col { display: flex; flex-direction: column; gap: .5rem; }
+  .flow-arrow { color: var(--text-muted); font-size: 1.3rem; padding: 0 .2rem; }
+  .flow-node.final { min-width: 120px; font-size: .85rem; }
+
+  footer { text-align: center; color: var(--text-muted); font-size: .72rem; margin-top: 2rem; line-height: 1.6; }
+  footer a { color: var(--text-muted); }
+
+  /* fruit picker */
+  .fruit-picker { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
+  .fruit-picker label { font-size: .8rem; color: var(--text-secondary); }
+  .fruit-picker select {
+    font: inherit; font-size: .9rem; text-transform: capitalize; padding: .3rem .6rem;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
+  }
+
+  /* clickable elements that open the info modal */
+  .clickable { cursor: pointer; }
+  .clickable:hover { border-color: var(--series-1) !important; }
+  .card.clickable:hover { box-shadow: 0 0 0 1px var(--series-1); }
+  .info-hint { font-size: .65rem; color: var(--text-muted); margin-top: .5rem; text-align: right; }
+
+  /* modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 100;
+  }
+  .modal-overlay[hidden] { display: none; }
+  .modal-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1.2rem 1.4rem; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto;
+    position: relative;
+  }
+  .modal-card h3 { margin: 0 0 .8rem; padding-right: 1.5rem; }
+  .modal-card p { font-size: .85rem; line-height: 1.5; color: var(--text-secondary); margin: 0 0 .7rem; }
+  .modal-card p strong { color: var(--text-primary); }
+  .modal-card a { color: var(--series-1); }
+  .modal-close {
+    position: absolute; top: 1rem; right: 1.2rem; background: none; border: none; cursor: pointer;
+    font-size: 1.3rem; color: var(--text-muted); line-height: 1; padding: 0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="fruit-picker">
+      <label for="fruit-select">Fruit:</label>
+      <select id="fruit-select"><option>Loading...</option></select>
+    </div>
+    <div id="verdict" class="verdict na">–</div>
+    <div class="subtext" id="lastUpdated"></div>
+  </header>
+
+  <section>
+    <h2>Sensor Readings</h2>
+    <div class="sensor-grid">
+      <div class="card sensor-tile clickable" id="tile-temp">
+        <div class="label">Temperature</div>
+        <div class="value" id="temp">–<span class="unit"> °C</span></div>
+        <svg class="sparkline" id="spark-temp" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points=""/></svg>
+        <div class="info-hint">ⓘ tap for detail</div>
+      </div>
+      <div class="card sensor-tile clickable" id="tile-humidity">
+        <div class="label">Humidity</div>
+        <div class="value" id="humidity">–<span class="unit"> %</span></div>
+        <svg class="sparkline" id="spark-humidity" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points=""/></svg>
+        <div class="info-hint">ⓘ tap for detail</div>
+      </div>
+      <div class="card sensor-tile clickable" id="tile-alcohol">
+        <div class="label">Alcohol (MQ-3)</div>
+        <div class="value" id="alcohol">–</div>
+        <svg class="sparkline" id="spark-alcohol" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points=""/></svg>
+        <div class="info-hint">ⓘ tap for detail</div>
+      </div>
+      <div class="card sensor-tile clickable" id="tile-airquality">
+        <div class="label">Air Quality (MQ-135)</div>
+        <div class="value" id="airquality">–</div>
+        <svg class="sparkline" id="spark-airquality" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points=""/></svg>
+        <div class="info-hint">ⓘ tap for detail</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Analysis Pipeline</h2>
+    <div class="card">
+      <div class="flow">
+        <div class="flow-node clickable" id="flow-sensors"><span class="flow-title">🌡️💧🍷🌬️</span><span class="flow-sub">4 sensors</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-col">
+          <div class="flow-node na clickable" id="flow-kinetics"><span class="flow-title">Q10 Kinetics</span><span class="flow-sub">physics</span></div>
+          <div class="flow-node na clickable" id="flow-env"><span class="flow-title">Env ML</span><span class="flow-sub">88% acc.</span></div>
+          <div class="flow-node na clickable" id="flow-gas"><span class="flow-title">Gas ML</span><span class="flow-sub">91% acc.</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node clickable" id="flow-majority"><span class="flow-title">Majority Vote</span><span class="flow-sub">&ge;2 of 3 agree</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node final na clickable" id="flow-final"><span class="flow-title">Final Verdict</span><span class="flow-sub" id="flow-final-sub">waiting</span></div>
+      </div>
+      <div class="info-hint" style="text-align:center;">ⓘ tap any box for how it works</div>
+      <div class="subtext" id="raw-vote-line" style="text-align:center; margin-top:.3rem;"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Model Detail</h2>
+    <div class="model-grid">
+
+      <div class="card model-card clickable" id="card-kinetics">
+        <h3>Q10 / Arrhenius Kinetics <span class="badge na" id="badge-kinetics">–</span></h3>
+        <div class="model-type">Physics-based · hand-set constants</div>
+        <div class="meter-row">
+          <span class="meter-label">Shelf life used</span>
+          <div class="meter"><div id="meter-kinetics" style="width:0%"></div></div>
+          <span class="meter-value" id="meter-kinetics-val">–</span>
+        </div>
+        <div class="model-footnote" id="kinetics-footnote">Estimates remaining shelf life from temperature/humidity deviation vs. this fruit's ideal storage condition.</div>
+        <div class="info-hint">ⓘ tap for implementation</div>
+      </div>
+
+      <div class="card model-card clickable" id="card-env">
+        <h3>Environmental Classifier <span class="badge na" id="badge-env">–</span></h3>
+        <div class="model-type" id="env-type">Logistic regression</div>
+        <div class="meter-row">
+          <span class="meter-label">P(bad)</span>
+          <div class="meter"><div id="meter-env" style="width:0%"></div></div>
+          <span class="meter-value" id="meter-env-val">–</span>
+        </div>
+        <div class="model-footnote" id="env-footnote">Loading model info…</div>
+        <div class="info-hint">ⓘ tap for implementation</div>
+      </div>
+
+      <div class="card model-card clickable" id="card-gas">
+        <h3>Gas Sensor Classifier <span class="badge na" id="badge-gas">–</span></h3>
+        <div class="model-type" id="gas-type">Logistic regression</div>
+        <div class="meter-row">
+          <span class="meter-label">P(bad)</span>
+          <div class="meter"><div id="meter-gas" style="width:0%"></div></div>
+          <span class="meter-value" id="meter-gas-val">–</span>
+        </div>
+        <div class="model-footnote" id="gas-footnote">Loading model info…</div>
+        <div class="caveat" id="gas-caveat"></div>
+        <div class="info-hint">ⓘ tap for implementation</div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer id="footer">
+    Cold Chain Brain · hackathon prototype, not a food-safety instrument
+  </footer>
+
+</div>
+
+<div class="modal-overlay" id="info-modal" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+    <h3 id="modal-title">–</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const fmt = (v, d=1) => (v === null || v === undefined) ? 'n/a' : v.toFixed ? v.toFixed(d) : v;
+const pct = (v) => (v === null || v === undefined) ? null : Math.round(v * 100);
+
+// ---- info modal ----
+const SENSOR_INFO = {
+  temp: { title: 'Temperature (DHT22)', body: '<p>Digital pin <strong>D2</strong>. Read every 2s via <code>dht.readTemperature()</code> in the sketch, sent to Python over the Bridge RPC. Feeds both the Q10 Kinetics model and the Environmental ML Classifier.</p>' },
+  humidity: { title: 'Humidity (DHT22)', body: '<p>Same physical sensor as temperature, digital pin <strong>D2</strong>, read via <code>dht.readHumidity()</code>. Feeds both the Q10 Kinetics model and the Environmental ML Classifier.</p>' },
+  alcohol: { title: 'Alcohol / MQ-3', body: '<p>Analog pin <strong>A0</strong>, 10-bit ADC (0-1023 raw). Detects ethanol vapor released by fermenting/over-ripe fruit. Feeds the Gas Sensor ML Classifier.</p><p><strong>⚠ Needs warm-up:</strong> readings drift for the first ~20s+ after power-on while the sensor\'s heater stabilizes.</p>' },
+  airquality: { title: 'Air Quality / MQ-135', body: '<p>Analog pin <strong>A1</strong>, 10-bit ADC (0-1023 raw). Detects ammonia and other VOCs from bacterial decomposition. Feeds the Gas Sensor ML Classifier.</p><p><strong>⚠ Needs warm-up</strong>, same as MQ-3.</p>' },
+  sensors: { title: 'All Sensors', body: '<p>4 physical sensors feed this system: <strong>DHT22</strong> (temperature + humidity, digital pin D2), <strong>MQ-3</strong> (alcohol, analog A0), <strong>MQ-135</strong> (air quality, analog A1). Tap the individual tiles in "Sensor Readings" above for detail on each.</p>' },
+  final: { title: 'Final Verdict', body: '<p>The headline FRESH/ROTTEN status shown at the top of the page. It is the <strong>debounced</strong> majority vote — see the "Majority Vote" box for exactly how that\'s computed.</p>' },
+};
+
+let MODEL_DATA = null;
+
+function modelBodyHtml(m) {
+  let html = `<p><strong>Type:</strong> ${m.type}</p>`;
+  if (m.inputs) html += `<p><strong>Inputs:</strong> ${m.inputs.join(', ')}</p>`;
+  if (m.accuracy) html += `<p><strong>Test accuracy:</strong> ${Math.round(m.accuracy * 100)}% (trained on ${m.rows.toLocaleString()} rows)</p>`;
+  if (m.dataset) html += `<p><strong>Dataset:</strong> <a href="${m.dataset_url}" target="_blank" rel="noopener">${m.dataset}</a> (${m.license})</p>`;
+  if (m.supported_fruits) html += `<p><strong>Covers:</strong> ${m.supported_fruits.join(', ')}</p>`;
+  if (m.profile) html += `<p><strong>Ideal for this fruit:</strong> ${m.profile.ideal_temp_c}°C, ${m.profile.ideal_humidity_pct}% RH, ${m.profile.reference_shelf_life_days}-day reference shelf life, Q10=${m.profile.q10}</p>`;
+  if (m.persistence_readings) html += `<p><strong>Persistence:</strong> ${m.persistence_readings} consecutive readings required</p>`;
+  if (m.explanation) html += `<p><strong>How it works:</strong> ${m.explanation}</p>`;
+  if (m.caveat) html += `<p style="color:var(--status-critical)"><strong>⚠ Caveat:</strong> ${m.caveat}</p>`;
+  return html;
+}
+
+function openModal(title, bodyHtml) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('info-modal').hidden = false;
+}
+function closeModal() { document.getElementById('info-modal').hidden = true; }
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('info-modal').addEventListener('click', (e) => { if (e.target.id === 'info-modal') closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+function bindModelClick(elId, key) {
+  document.getElementById(elId).addEventListener('click', () => {
+    if (!MODEL_DATA) return;
+    openModal(MODEL_DATA[key].label, modelBodyHtml(MODEL_DATA[key]));
+  });
+}
+['flow-kinetics', 'card-kinetics'].forEach(id => bindModelClick(id, 'kinetics'));
+['flow-env', 'card-env'].forEach(id => bindModelClick(id, 'env'));
+['flow-gas', 'card-gas'].forEach(id => bindModelClick(id, 'gas'));
+document.getElementById('flow-majority').addEventListener('click', () => {
+  if (!MODEL_DATA) return;
+  openModal(MODEL_DATA.fusion.label, modelBodyHtml(MODEL_DATA.fusion));
+});
+Object.entries(SENSOR_INFO).forEach(([key, info]) => {
+  const el = document.getElementById(key === 'sensors' ? 'flow-sensors' : (key === 'final' ? 'flow-final' : 'tile-' + key));
+  if (el) el.addEventListener('click', () => openModal(info.title, info.body));
+});
+
+function setVerdictNode(el, badgeEl, predictsBad, text) {
+  el.classList.remove('good', 'critical', 'na');
+  if (predictsBad === null || predictsBad === undefined) {
+    el.classList.add('na');
+    if (badgeEl) { badgeEl.textContent = 'n/a'; badgeEl.className = 'badge na'; }
+    return;
+  }
+  el.classList.add(predictsBad ? 'critical' : 'good');
+  if (badgeEl) {
+    badgeEl.textContent = predictsBad ? '⚠ BAD' : '✓ GOOD';
+    badgeEl.className = 'badge ' + (predictsBad ? 'critical' : 'good');
+  }
+}
+
+function drawSparkline(id, values) {
+  const svg = document.getElementById(id);
+  const poly = svg.querySelector('polyline');
+  if (!values || values.length < 2) { poly.setAttribute('points', ''); return; }
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = (max - min) || 1;
+  const points = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * 100;
+    const y = 26 - ((v - min) / range) * 24;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  poly.setAttribute('points', points);
+}
+
+let modelsLoaded = false;
+async function loadModelInfo() {
+  try {
+    const res = await fetch('/api/models');
+    const m = await res.json();
+    MODEL_DATA = m;
+
+    document.getElementById('kinetics-footnote').textContent =
+      `Ideal for this fruit: ${m.kinetics.profile.ideal_temp_c}°C, ${m.kinetics.profile.ideal_humidity_pct}% RH, ${m.kinetics.profile.reference_shelf_life_days}-day reference shelf life.`;
+
+    document.getElementById('env-type').textContent = `${m.env.type} · ${Math.round(m.env.accuracy * 100)}% test accuracy`;
+    document.getElementById('env-footnote').innerHTML =
+      `Trained on ${m.env.rows.toLocaleString()} rows from <a href="${m.env.dataset_url}" target="_blank" rel="noopener">${m.env.dataset}</a> (${m.env.license}). Inputs: ${m.env.inputs.join(', ')}. Covers: ${m.env.supported_fruits.join(', ')}.`;
+
+    document.getElementById('gas-type').textContent = `${m.gas.type} · ${Math.round(m.gas.accuracy * 100)}% test accuracy`;
+    document.getElementById('gas-footnote').innerHTML =
+      `Trained on ${m.gas.rows.toLocaleString()} rows from <a href="${m.gas.dataset_url}" target="_blank" rel="noopener">${m.gas.dataset}</a> (${m.gas.license}). Inputs: ${m.gas.inputs.join(', ')}. Covers: ${m.gas.supported_fruits.join(', ')}.`;
+    document.getElementById('gas-caveat').textContent = '⚠ ' + m.gas.caveat;
+
+    document.querySelector('#flow-env .flow-sub').textContent = Math.round(m.env.accuracy * 100) + '% acc.';
+    document.querySelector('#flow-gas .flow-sub').textContent = Math.round(m.gas.accuracy * 100) + '% acc.';
+
+    modelsLoaded = true;
+  } catch (e) { /* dashboard still works without model metadata */ }
+}
+
+async function refresh() {
+  try {
+    const [statusRes, historyRes] = await Promise.all([fetch('/api/status'), fetch('/api/history')]);
+    const data = await statusRes.json();
+    const history = await historyRes.json();
+
+    const fruitSelect = document.getElementById('fruit-select');
+    if (fruitSelect.value !== data.fruit && fruitSelect.options.length && fruitSelect.dataset.ready) {
+      fruitSelect.value = data.fruit;
+    }
+
+    const verdictEl = document.getElementById('verdict');
+    if (!data.ready) {
+      verdictEl.textContent = 'Waiting for sensor data…';
+      verdictEl.className = 'verdict na';
+      return;
+    }
+
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    verdictEl.textContent = data.rotten ? '⚠ ROTTEN' : '✓ FRESH';
+    verdictEl.className = 'verdict ' + (data.rotten ? 'critical' : 'good');
+
+    document.getElementById('temp').innerHTML = `${fmt(data.temperature)}<span class="unit"> °C</span>`;
+    document.getElementById('humidity').innerHTML = `${fmt(data.humidity)}<span class="unit"> %</span>`;
+    document.getElementById('alcohol').textContent = data.alcohol_level;
+    document.getElementById('airquality').textContent = data.air_quality_level;
+
+    drawSparkline('spark-temp', history.map(h => h.temperature));
+    drawSparkline('spark-humidity', history.map(h => h.humidity));
+    drawSparkline('spark-alcohol', history.map(h => h.alcohol_level));
+    drawSparkline('spark-airquality', history.map(h => h.air_quality_level));
+
+    // Kinetics
+    document.getElementById('meter-kinetics').style.width = data.kinetics_life_consumed_pct + '%';
+    document.getElementById('meter-kinetics-val').textContent = data.kinetics_life_consumed_pct + '%';
+    setVerdictNode(document.getElementById('flow-kinetics'), document.getElementById('badge-kinetics'), data.kinetics_predicts_bad, 'kinetics');
+    document.querySelector('#flow-kinetics .flow-sub').textContent = data.remaining_days + 'd left';
+
+    // Env ML
+    const envPct = pct(data.env_bad_probability);
+    document.getElementById('meter-env').style.width = (envPct ?? 0) + '%';
+    document.getElementById('meter-env-val').textContent = envPct === null ? 'n/a' : envPct + '%';
+    setVerdictNode(document.getElementById('flow-env'), document.getElementById('badge-env'), data.env_bad_probability === null ? null : data.env_predicts_bad, 'env');
+
+    // Gas ML
+    const gasPct = pct(data.gas_bad_probability);
+    document.getElementById('meter-gas').style.width = (gasPct ?? 0) + '%';
+    document.getElementById('meter-gas-val').textContent = gasPct === null ? 'n/a' : gasPct + '%';
+    setVerdictNode(document.getElementById('flow-gas'), document.getElementById('badge-gas'), data.gas_bad_probability === null ? null : data.gas_predicts_bad, 'gas');
+
+    // Final verdict node in the flow diagram
+    const finalNode = document.getElementById('flow-final');
+    finalNode.classList.remove('good', 'critical', 'na');
+    finalNode.classList.add(data.rotten ? 'critical' : 'good');
+    document.getElementById('flow-final-sub').textContent = data.rotten ? 'ROTTEN' : 'FRESH';
+
+    const rawLine = document.getElementById('raw-vote-line');
+    if (data.raw_rotten !== data.rotten) {
+      rawLine.textContent = `⏳ Instantaneous vote just flipped to ${data.raw_rotten ? 'ROTTEN' : 'FRESH'} — reported status only changes once this holds for several readings in a row.`;
+    } else {
+      rawLine.textContent = `Instantaneous vote matches reported status (debounced over consecutive readings to ignore single-sample sensor noise).`;
+    }
+
+    if (!modelsLoaded) loadModelInfo();
+  } catch (e) {
+    document.getElementById('verdict').textContent = 'Connection error';
+    document.getElementById('verdict').className = 'verdict na';
+  }
+}
+
+async function initFruitPicker() {
+  const select = document.getElementById('fruit-select');
+  try {
+    const res = await fetch('/api/fruit');
+    const { current, available } = await res.json();
+    select.innerHTML = available.map(f => `<option value="${f}"${f === current ? ' selected' : ''}>${f}</option>`).join('');
+    select.dataset.ready = '1';
+  } catch (e) {
+    select.innerHTML = '<option>unavailable</option>';
+  }
+}
+
+document.getElementById('fruit-select').addEventListener('change', async (e) => {
+  await fetch('/api/fruit?fruit=' + encodeURIComponent(e.target.value), { method: 'POST' });
+  modelsLoaded = false;  // kinetics profile differs per fruit - refetch model info
+  loadModelInfo();
+  refresh();
+});
+
+initFruitPicker();
+loadModelInfo();
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

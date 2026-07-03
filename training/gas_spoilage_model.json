@@ -1,0 +1,55 @@
+{
+  "feature_order": [
+    "MQ3",
+    "MQ135",
+    "fruit_Banana",
+    "fruit_Blueberry",
+    "fruit_Grape",
+    "fruit_Green Apple",
+    "fruit_Kiwi",
+    "fruit_Pear",
+    "fruit_Red Apple",
+    "fruit_Strawberry",
+    "fruit_Tomato"
+  ],
+  "numeric_features": [
+    "MQ3",
+    "MQ135"
+  ],
+  "scaler_mean": {
+    "MQ3": 238.27856263937477,
+    "MQ135": 965.384124191049
+  },
+  "scaler_scale": {
+    "MQ3": 176.8505579219654,
+    "MQ135": 489.12784793109194
+  },
+  "fruit_categories": [
+    "Banana",
+    "Blueberry",
+    "Grape",
+    "Green Apple",
+    "Kiwi",
+    "Pear",
+    "Red Apple",
+    "Strawberry",
+    "Tomato"
+  ],
+  "weights": [
+    0.5311613981380398,
+    9.457005875530196,
+    2.982989283766363,
+    2.5994485874216733,
+    -4.218682915828688,
+    6.2059211669662915,
+    3.4419056430291715,
+    4.685711510801695,
+    5.516929746731702,
+    -17.78796913823683,
+    -5.099825818826323
+  ],
+  "bias": -1.6813630706150866,
+  "label_definition": "Bad = 1 if the sample was taken on day 4 or 5 of a 5-day monitoring window, else Good. Not an independently verified spoilage label.",
+  "source": "Food Freshness Electronic Nose Dataset, Zenodo doi:10.5281/zenodo.17285312, CC BY 4.0",
+  "caveat": "Trained on this study's own MQ3/MQ135 units; MQ3 range (53-941) roughly matches a 0-1023 ADC like ours, but MQ135 range (434-2975) exceeds our 0-1023 ADC range, meaning their sensor/circuit was scaled differently. Treat gas-based predictions as directional, not precisely calibrated."
+}

@@ -1,0 +1,38 @@
+{
+  "feature_order": [
+    "Temp",
+    "Humid",
+    "fruit_Banana",
+    "fruit_Orange",
+    "fruit_Pineapple",
+    "fruit_Tomato"
+  ],
+  "numeric_features": [
+    "Temp",
+    "Humid"
+  ],
+  "scaler_mean": {
+    "Temp": 23.83219645293315,
+    "Humid": 93.53240109140519
+  },
+  "scaler_scale": {
+    "Temp": 1.2309633629311363,
+    "Humid": 2.9881485948099313
+  },
+  "fruit_categories": [
+    "Banana",
+    "Orange",
+    "Pineapple",
+    "Tomato"
+  ],
+  "weights": [
+    1.9777287868882463,
+    7.173871042898569,
+    -0.9772903227555151,
+    0.41534881078658087,
+    -1.4294721289109165,
+    -0.18758372291591005
+  ],
+  "bias": -2.305582052353393,
+  "note": "Predicts P(Bad). Standardize Temp/Humid with (x-mean)/scale, one-hot encode fruit in feature_order, dot with weights, add bias, sigmoid."
+}
